@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+
+    <title>presentation-kit</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+
+    <style>
+* { margin: 0; padding: 0;}
+
+body, html { height:100%; }
+
+canvas { display:block; }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+      var canvas = document.getElementById('canvas');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+window.addEventListener('resize', resizeCanvas, false);
+
+resizeCanvas();
+
+
+var ctx = canvas.getContext('2d');
+ctx.fillStyle = 'red';
+
+var whiteboard = {
+  drawings: [],
+  pointer: {
+    x: 0,
+    y: 0
+  }
+};
+
+var socket = io('http://localhost:5678');
+
+socket.on('whiteboard', events => {
+  for (var i = 0; i < events.length; i++) {
+    whiteboard.drawings.unshift(events[i]);
+  }
+});
+
+socket.on('whiteboard-change', event => {
+  whiteboard.pointer.x = event.x;
+  whiteboard.pointer.y = event.y;
+
+  if (event.type === 'DRAW' || event.type === 'DRAW_START') {
+    whiteboard.drawings.push(event);
+  }
+});
+
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.beginPath();
+  ctx.fillStyle = 'red';
+  ctx.arc(whiteboard.pointer.x, whiteboard.pointer.y, 10, 0, 2 * Math.PI);
+  ctx.fill();
+
+  var contextOpened = false;
+  for (var i = whiteboard.drawings.length - 1; i >= 0; i--) {
+    var event = whiteboard.drawings[i];
+
+    if (!contextOpened) {
+      ctx.beginPath();
+      contextOpened = true;
+      ctx.moveTo(event.x, event.y);
+    } else {
+      ctx.lineTo(event.x, event.y);
+    }
+
+    if (event.type === 'DRAW_START') {
+      ctx.stroke();
+      contextOpened = false;
+    }
+  }
+}
+
+setInterval(redraw, 100);
+
+    </script>
+  </body>
+</html>
