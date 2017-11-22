@@ -44,7 +44,7 @@ var whiteboard = {
   }
 };
 
-var socket = io('http://localhost:5678');
+var socket = io('http://' + window.location.hostname + ':5678');
 
 socket.on('whiteboard', events => {
   for (var i = 0; i < events.length; i++) {
@@ -56,29 +56,49 @@ socket.on('whiteboard-change', event => {
   whiteboard.pointer.x = event.x;
   whiteboard.pointer.y = event.y;
 
-  if (event.type === 'DRAW' || event.type === 'DRAW_START') {
+  if (event.type === 'DRAW' || event.type === 'DRAW_START' || event.type === 'MOVE_CANVAS') {
     whiteboard.drawings.push(event);
+  }
+
+  if (event.type === 'CLEAR') {
+    whiteboard.drawings = []
   }
 });
 
 function redraw() {
+  var originX = 0;
+  var originY = 0;
+
+  for (var i = whiteboard.drawings.length - 1; i >= 0; i--) {
+    var event = whiteboard.drawings[i];
+
+    if (event.type === 'MOVE_CANVAS') {
+      originX += event.dx;
+      originY += event.dy;
+    }
+  }
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.beginPath();
   ctx.fillStyle = 'red';
-  ctx.arc(whiteboard.pointer.x, whiteboard.pointer.y, 10, 0, 2 * Math.PI);
+  ctx.arc(originX + whiteboard.pointer.x, originY + whiteboard.pointer.y, 10, 0, 2 * Math.PI);
   ctx.fill();
 
   var contextOpened = false;
   for (var i = whiteboard.drawings.length - 1; i >= 0; i--) {
     var event = whiteboard.drawings[i];
 
+    if (event.type === 'MOVE_CANVAS') {
+      continue;
+    }
+
     if (!contextOpened) {
       ctx.beginPath();
       contextOpened = true;
-      ctx.moveTo(event.x, event.y);
+      ctx.moveTo(originX + event.x, originY + event.y);
     } else {
-      ctx.lineTo(event.x, event.y);
+      ctx.lineTo(originX + event.x, originY + event.y);
     }
 
     if (event.type === 'DRAW_START') {

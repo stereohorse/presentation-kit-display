@@ -1,0 +1,4 @@
+#!/bin/bash
+
+docker build . -t 0x06065a/presentation-kit-display \
+  && docker push 0x06065a/presentation-kit-display
